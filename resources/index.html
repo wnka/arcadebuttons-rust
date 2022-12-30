@@ -55,38 +55,38 @@
   width: 80px;
 }
 
-.joystick.up:after {
+.joystick.u:after {
   top: 75px;
 }
 
-.joystick.down:after {
+.joystick.d:after {
   top: 145px;
 }
 
-.joystick.left:after {
+.joystick.l:after {
   left: 75px;
 }
 
-.joystick.right:after {
+.joystick.r:after {
   left: 145px;
 }
 
-.joystick.up.left:after {
+.joystick.u.l:after {
   left: 85px;
   top: 85px;
 }
 
-.joystick.up.right:after {
+.joystick.u.r:after {
   left: 135px;
   top: 85px;
 }
 
-.joystick.down.left:after {
+.joystick.d.l:after {
   left: 85px;
   top: 135px;
 }
 
-.joystick.down.right:after {
+.joystick.d.r:after {
   left: 135px;
   top: 135px;
 }
@@ -156,7 +156,7 @@
   var button4 = document.getElementById('button4');
 
   var updateJoystick = function(switchName, val) {
-    if (val == "down") {
+    if (val == "d") {
       joystickPosition[switchName] = true;
     } else {
       joystickPosition[switchName] = false;
@@ -169,7 +169,7 @@
   }
 
   var updateButton = function(button, val) {
-    if (val == "down") {
+    if (val == "d") {
       button.className = "button pressed"
     } else {
       button.className = "button"
@@ -177,8 +177,24 @@
   }
 
   ws.onmessage = function(msg) {
-      console.log("got a message!");
-      updateButton(button2, "down");
+      var input = msg.data[0]
+      var state = msg.data[1]
+      switch (input) {
+      case '1':
+          updateButton(button1, state);
+          break;
+      case '2':
+          updateButton(button2, state);
+          break;
+      case '3':
+          updateButton(button3, state);
+          break;
+      case '4':
+          updateButton(button4, state);
+          break;
+      default:
+          updateJoystick(input, state);
+      }
   };
 
 </script>

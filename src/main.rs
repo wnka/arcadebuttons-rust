@@ -60,7 +60,13 @@ async fn user_connected(ws: WebSocket, users: Users) {
     let (tx, rx) = mpsc::unbounded_channel();
     let mut rx = UnboundedReceiverStream::new(rx);
 
-    user_ws_tx.send(Message::text("hello")).unwrap_or_else(|e| eprintln!("uh oh: {}", e)).await;
+    user_ws_tx.send(Message::text("2d")).unwrap_or_else(|e| eprintln!("uh oh: {}", e)).await;
+    user_ws_tx.send(Message::text("1d")).unwrap_or_else(|e| eprintln!("uh oh: {}", e)).await;
+    user_ws_tx.send(Message::text("3d")).unwrap_or_else(|e| eprintln!("uh oh: {}", e)).await;
+    user_ws_tx.send(Message::text("4d")).unwrap_or_else(|e| eprintln!("uh oh: {}", e)).await;
+    user_ws_tx.send(Message::text("ud")).unwrap_or_else(|e| eprintln!("uh oh: {}", e)).await;
+    user_ws_tx.send(Message::text("rd")).unwrap_or_else(|e| eprintln!("uh oh: {}", e)).await;
+    user_ws_tx.send(Message::text("2u")).unwrap_or_else(|e| eprintln!("uh oh: {}", e)).await;
 
     tokio::task::spawn(async move {
         while let Some(message) = rx.next().await {
