@@ -6,7 +6,9 @@ version = 3
 name = "arcadebuttons"
 version = "0.1.0"
 dependencies = [
+ "futures-util",
  "tokio",
+ "tokio-stream",
  "warp",
 ]
 
