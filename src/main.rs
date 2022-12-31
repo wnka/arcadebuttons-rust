@@ -1,17 +1,15 @@
-use tokio::time::sleep;
 use warp::Filter;
 use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
-use std::time::Duration;
 use futures_util::{SinkExt, StreamExt, TryFutureExt};
 use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
-use rppal::{gpio::Gpio, gpio::InputPin, gpio::Trigger, gpio::Level};
+use tokio_gpiod::{Chip, Options, EdgeDetect};
 
 /// Our state of currently connected users.
 ///
@@ -36,7 +34,7 @@ async fn main() {
 
     // GET /buttons -> websocket upgrade
     let buttons = warp::path("buttons")
-        // The `ws()` filter will prepare Websocket handshake...
+    // The `ws()` filter will prepare Websocket handshake...
         .and(warp::ws())
         .and(users)
         .map(|ws: warp::ws::Ws, users| {
@@ -49,60 +47,64 @@ async fn main() {
 
     let routes = index.or(buttons);
 
-<<<<<<< HEAD
-    // Placeholder to toggle button #2
+    let (gpio_tx, client_rx) = mpsc::unbounded_channel::<String>();
+
+    // Broadcast updates from GPIO to the thing that sends to clients
     tokio::task::spawn(async move {
-        loop {
-            for (_uid, tx) in users_list_writer.read().await.iter() {
-                if let Err(_disconnected) = tx.send(Message::text("2d")) {
-                    // The tx is disconnected, our `user_disconnected` code
-                    // should be happening in another task, nothing more to
-                    // do here.
-                }
-            }
-            sleep(Duration::from_millis(500)).await;
-            for (_uid, tx) in users_list_writer.read().await.iter() {
-                if let Err(_disconnected) = tx.send(Message::text("2u")) {
-                    // The tx is disconnected, our `user_disconnected` code
-                    // should be happening in another task, nothing more to
-                    // do here.
-                }
-            }
-            sleep(Duration::from_millis(500)).await;
+        // open chip. why gpiochip0? not sure! but it works!
+        // at least it works on an RPi4b
+        let chip = Chip::new("gpiochip0").await.unwrap();
+
+        let opts = Options::input([16, 6, 20, 12, 19, 26, 21, 13]) // configure lines offsets
+            .edge(EdgeDetect::Both); // We want events for both button up and button down
+
+        let mut inputs = chip.request_lines(opts).await.unwrap();
+        while let Ok(event) = inputs.read_event().await {
+            // the 'line' matches the index of the Options::input
+            // array above. So, pin 16, which is up, is index 0.
+            let input = match event.line {
+                0 => 'u', // up
+                1 => 'd', // down
+                2 => 'l', // left
+                3 => 'r', // right
+                4 => '1', // button 1
+                5 => '2', // button 2
+                6 => '3', // button 3
+                7 => '4', // button 4
+                _ => panic!("Unknown line"),
+            };
+
+            let state = match event.edge {
+                tokio_gpiod::Edge::Falling => 'u', // not pressed
+                tokio_gpiod::Edge::Rising => 'd', // pressed
+            };
+
+            // We send a 2 character message over the websocket, with the input
+            // (i.e. 'l' for left on the joystick) and its state (i.e. 'd' for
+            // pressed).
+            //
+            // So, push the joystick to the left = "ld", let go = "lu".
+            gpio_tx.send(format!("{}{}", input, state)).unwrap_or_else(|e| {
+                eprintln!("websocket send error: {}", e);
+            });
         }
     });
 
-=======
-    let (gpio_tx, client_rx) = mpsc::unbounded_channel();
-
-    tokio::task::spawn(async move {
-        loop {
-            sleep(Duration::from_millis(50)).await;
-            gpio_tx.send("2u").unwrap_or_else(|e| {
-                eprintln!("websocket send error: {}", e);
-            });
-            sleep(Duration::from_millis(50)).await;
-            gpio_tx.send("2d").unwrap_or_else(|e| {
-                eprintln!("websocket send error: {}", e);
-            });
-        }
-    });
-
-    // Placeholder to toggle button #2
+    // Broadcast updates to clients
     tokio::task::spawn(async move {
         let mut rx = UnboundedReceiverStream::new(client_rx);
+        // Read a message off the channel where GPIO writes go.
         while let Some(message) = rx.next().await {
-                for (_uid, tx) in users_list_writer.read().await.iter() {
-                    if let Err(_disconnected) = tx.send(Message::text(message)) {
-                        // The tx is disconnected, our `user_disconnected` code
-                        // should be happening in another task, nothing more to
-                        // do here.
-                    }
+            for (_uid, tx) in users_list_writer.read().await.iter() {
+                if let Err(_disconnected) = tx.send(Message::text(message.clone())) {
+                    // The tx is disconnected, our `user_disconnected` code
+                    // should be happening in another task, nothing more to
+                    // do here.
                 }
             }
+        }
     });
 
->>>>>>> 01bce75 (use mpsc to bridge inputs to updates)
     warp::serve(routes).run(([0, 0, 0, 0], 6528)).await;
 }
 
@@ -133,8 +135,8 @@ async fn user_connected(ws: WebSocket, users: Users) {
     // Save the sender in our list of connected users.
     users.write().await.insert(my_id, tx);
 
-    // Every time the user sends a message, broadcast it to
-    // all other users...
+    // This is to process messages from clients, which... there aren't any!
+    // Except for the "close" message when you shutdown a client.
     while let Some(result) = user_ws_rx.next().await {
         match result {
             Ok(msg) => eprintln!("Got a message from client {}: {:?}", my_id, msg),
