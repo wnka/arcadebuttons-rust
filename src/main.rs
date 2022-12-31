@@ -11,6 +11,8 @@ use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
+use rppal::{gpio::Gpio, gpio::InputPin, gpio::Trigger, gpio::Level};
+
 /// Our state of currently connected users.
 ///
 /// - Key is their id
@@ -42,12 +44,12 @@ async fn main() {
             ws.on_upgrade(move |socket| user_connected(socket, users))
         });
 
-
     // GET / -> index html
     let index = warp::path::end().map(|| warp::reply::html(include_str!("../resources/index.html")));
 
     let routes = index.or(buttons);
 
+<<<<<<< HEAD
     // Placeholder to toggle button #2
     tokio::task::spawn(async move {
         loop {
@@ -70,6 +72,37 @@ async fn main() {
         }
     });
 
+=======
+    let (gpio_tx, client_rx) = mpsc::unbounded_channel();
+
+    tokio::task::spawn(async move {
+        loop {
+            sleep(Duration::from_millis(50)).await;
+            gpio_tx.send("2u").unwrap_or_else(|e| {
+                eprintln!("websocket send error: {}", e);
+            });
+            sleep(Duration::from_millis(50)).await;
+            gpio_tx.send("2d").unwrap_or_else(|e| {
+                eprintln!("websocket send error: {}", e);
+            });
+        }
+    });
+
+    // Placeholder to toggle button #2
+    tokio::task::spawn(async move {
+        let mut rx = UnboundedReceiverStream::new(client_rx);
+        while let Some(message) = rx.next().await {
+                for (_uid, tx) in users_list_writer.read().await.iter() {
+                    if let Err(_disconnected) = tx.send(Message::text(message)) {
+                        // The tx is disconnected, our `user_disconnected` code
+                        // should be happening in another task, nothing more to
+                        // do here.
+                    }
+                }
+            }
+    });
+
+>>>>>>> 01bce75 (use mpsc to bridge inputs to updates)
     warp::serve(routes).run(([0, 0, 0, 0], 6528)).await;
 }
 

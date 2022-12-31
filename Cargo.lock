@@ -7,6 +7,7 @@ name = "arcadebuttons"
 version = "0.1.0"
 dependencies = [
  "futures-util",
+ "rppal",
  "tokio",
  "tokio-stream",
  "warp",
@@ -565,6 +566,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3acd125665422973a33ac9d3dd2df85edad0f4ae9b00dafb1a05e43a9f5ef8e7"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "rppal"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "612e1a22e21f08a246657c6433fe52b773ae43d07c9ef88ccfc433cc8683caba"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
