@@ -12,6 +12,7 @@ use warp::ws::{Message, WebSocket};
 #[cfg(target_os = "linux")]
 use tokio_gpiod::{Chip, Options, EdgeDetect};
 
+#[cfg(not(target_os = "linux"))]
 use rand::seq::SliceRandom;
 
 /// Our state of currently connected users.
