@@ -81,8 +81,8 @@ async fn main() {
                 };
 
                 let state = match event.edge {
-                    tokio_gpiod::Edge::Falling => 'u', // not pressed
-                    tokio_gpiod::Edge::Rising => 'd', // pressed
+                    tokio_gpiod::Edge::Falling => 'd', // pressed
+                    tokio_gpiod::Edge::Rising => 'u', // not pressed
                 };
 
                 // We send a 2 character message over the websocket, with the input
