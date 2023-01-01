@@ -11,6 +11,7 @@ tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1.1"
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 rand = "0.8.5"
+clap = { version = "4", features = ["derive"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 tokio-gpiod = "0.2.2"

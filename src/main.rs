@@ -15,6 +15,17 @@ use tokio_gpiod::{Chip, Options, EdgeDetect};
 #[cfg(not(target_os = "linux"))]
 use rand::seq::SliceRandom;
 
+use clap::Parser;
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Port to use
+    #[arg(short, long, default_value_t = 6528)]
+    port: u16,
+}
+
 /// Our state of currently connected users.
 ///
 /// - Key is their id
@@ -26,6 +37,9 @@ static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
 
 #[tokio::main]
 async fn main() {
+
+    let args = Args::parse();
+
     // Keep track of all connected users, key is usize, value
     // is a websocket sender.
     let users_list = Users::default();
@@ -126,7 +140,9 @@ async fn main() {
         }
     });
 
-    warp::serve(routes).run(([0, 0, 0, 0], 6528)).await;
+    eprintln!("Starting server on port {}", args.port);
+    eprintln!("http://localhost:{}", args.port);
+    warp::serve(routes).run(([0, 0, 0, 0], args.port)).await;
 }
 
 async fn user_connected(ws: WebSocket, users: Users) {
