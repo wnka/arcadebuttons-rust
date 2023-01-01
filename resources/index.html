@@ -140,15 +140,27 @@
 <body bgcolor="green">
 <div class="joystick" id="joystick"></div>
 <div class="button" style="top:30px;left:5px;" id="button1"></div>
+<div style="top:76px;left:274px;position:absolute;" id="b1label"></div>
 <div class="button" id="button2"></div>
+<div style="top:47px;left:335px;position:absolute;" id="b2label"></div>
 <div class="button" style="top:5px;" id="button3"></div>
+<div style="top:52px;left:400px;position:absolute;" id="b3label"></div>
 <div class="button" style="left:-200px;top:100px;" id="button4"></div>
+<div style="top:231px;left:268px;position:absolute;" id="b4label"></div>
 
 <script>
   const uri = 'ws://' + location.host + '/buttons';
   const ws = new WebSocket(uri);
   var joystickPosition = {};
 
+  var queryParams = new URLSearchParams(window.location.search);
+  for (const [key, value] of queryParams.entries()) {
+      var label = document.getElementById(key);
+      if (label != null) {
+          label.innerHTML=value;
+      }
+  };  
+  
   var joystick = document.getElementById('joystick');
   var button1 = document.getElementById('button1');
   var button2 = document.getElementById('button2');
