@@ -9,7 +9,10 @@ use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
+#[cfg(target_os = "linux")]
 use tokio_gpiod::{Chip, Options, EdgeDetect};
+
+use rand::seq::SliceRandom;
 
 /// Our state of currently connected users.
 ///
@@ -51,42 +54,59 @@ async fn main() {
 
     // Broadcast updates from GPIO to the thing that sends to clients
     tokio::task::spawn(async move {
-        // open chip. why gpiochip0? not sure! but it works!
-        // at least it works on an RPi4b
-        let chip = Chip::new("gpiochip0").await.unwrap();
+        #[cfg(target_os = "linux")]
+        {
+            // open chip. why gpiochip0? not sure! but it works!
+            // at least it works on an RPi4b
+            let chip = Chip::new("gpiochip0").await.unwrap();
 
-        let opts = Options::input([16, 6, 20, 12, 19, 26, 21, 13]) // configure lines offsets
-            .edge(EdgeDetect::Both); // We want events for both button up and button down
+            let opts = Options::input([16, 6, 20, 12, 19, 26, 21, 13]) // configure lines offsets
+                .edge(EdgeDetect::Both); // We want events for both button up and button down
 
-        let mut inputs = chip.request_lines(opts).await.unwrap();
-        while let Ok(event) = inputs.read_event().await {
-            // the 'line' matches the index of the Options::input
-            // array above. So, pin 16, which is up, is index 0.
-            let input = match event.line {
-                0 => 'u', // up
-                1 => 'd', // down
-                2 => 'l', // left
-                3 => 'r', // right
-                4 => '1', // button 1
-                5 => '2', // button 2
-                6 => '3', // button 3
-                7 => '4', // button 4
-                _ => panic!("Unknown line"),
-            };
+            let mut inputs = chip.request_lines(opts).await.unwrap();
+            while let Ok(event) = inputs.read_event().await {
+                // the 'line' matches the index of the Options::input
+                // array above. So, pin 16, which is up, is index 0.
+                let input = match event.line {
+                    0 => 'u', // up
+                    1 => 'd', // down
+                    2 => 'l', // left
+                    3 => 'r', // right
+                    4 => '1', // button 1
+                    5 => '2', // button 2
+                    6 => '3', // button 3
+                    7 => '4', // button 4
+                    _ => panic!("Unknown line"),
+                };
 
-            let state = match event.edge {
-                tokio_gpiod::Edge::Falling => 'u', // not pressed
-                tokio_gpiod::Edge::Rising => 'd', // pressed
-            };
+                let state = match event.edge {
+                    tokio_gpiod::Edge::Falling => 'u', // not pressed
+                    tokio_gpiod::Edge::Rising => 'd', // pressed
+                };
 
-            // We send a 2 character message over the websocket, with the input
-            // (i.e. 'l' for left on the joystick) and its state (i.e. 'd' for
-            // pressed).
-            //
-            // So, push the joystick to the left = "ld", let go = "lu".
-            gpio_tx.send(format!("{}{}", input, state)).unwrap_or_else(|e| {
-                eprintln!("websocket send error: {}", e);
-            });
+                // We send a 2 character message over the websocket, with the input
+                // (i.e. 'l' for left on the joystick) and its state (i.e. 'd' for
+                // pressed).
+                //
+                // So, push the joystick to the left = "ld", let go = "lu".
+                gpio_tx.send(format!("{}{}", input, state)).unwrap_or_else(|e| {
+                    eprintln!("websocket send error: {}", e);
+                });
+            }
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let buttons = vec!["u", "l", "1", "2", "3", "4"];
+            let states = vec!["u", "d"];
+            loop {
+                let button = buttons.choose(&mut rand::thread_rng()).unwrap();
+                let state = states.choose(&mut rand::thread_rng()).unwrap();
+                gpio_tx.send(format!("{}{}", button, state)).unwrap_or_else(|e| {
+                    eprintln!("websocket send error: {}", e);
+                });
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
         }
     });
 

@@ -7,6 +7,7 @@ name = "arcadebuttons"
 version = "0.1.0"
 dependencies = [
  "futures-util",
+ "rand",
  "tokio",
  "tokio-gpiod",
  "tokio-stream",
