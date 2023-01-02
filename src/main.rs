@@ -12,9 +12,6 @@ use warp::ws::{Message, WebSocket};
 #[cfg(target_os = "linux")]
 use tokio_gpiod::{Chip, Options, EdgeDetect};
 
-#[cfg(not(target_os = "linux"))]
-use rand::seq::SliceRandom;
-
 use clap::Parser;
 
 /// Simple program to greet a person
@@ -112,15 +109,18 @@ async fn main() {
 
         #[cfg(not(target_os = "linux"))]
         {
-            let buttons = vec!["u", "l", "1", "2", "3", "4"];
-            let states = vec!["u", "d"];
+            // Spin the joystick, then press all the buttons
+            let cycle = vec!["ld", "ud", "lu", "rd", "uu", "dd", "ru", "ld", "du", "lu",
+                             "1d", "1u", "2d", "2u",
+                             "3d", "3u", "4d", "4u",
+            ];
             loop {
-                let button = buttons.choose(&mut rand::thread_rng()).unwrap();
-                let state = states.choose(&mut rand::thread_rng()).unwrap();
-                gpio_tx.send(format!("{}{}", button, state)).unwrap_or_else(|e| {
-                    eprintln!("websocket send error: {}", e);
-                });
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                for state in cycle.clone().into_iter() {
+                    gpio_tx.send(String::from(state)).unwrap_or_else(|e| {
+                        eprintln!("websocket send error: {}", e);
+                    });
+                    tokio::time::sleep(std::time::Duration::from_millis(rand::random::<u64>() % 250)).await;
+                }
             }
         }
     });
