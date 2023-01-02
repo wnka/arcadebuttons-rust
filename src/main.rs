@@ -119,7 +119,7 @@ async fn main() {
                     gpio_tx.send(String::from(state)).unwrap_or_else(|e| {
                         eprintln!("websocket send error: {}", e);
                     });
-                    tokio::time::sleep(std::time::Duration::from_millis(rand::random::<u64>() % 250)).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(rand::random::<u64>() % 250 + 50)).await;
                 }
             }
         }
