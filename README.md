@@ -3,7 +3,7 @@ arcadebuttons-rust
 
 Reads the input of buttons from GPIO pins on a Raspberry Pi and displays them on a webpage using [warp](https://github.com/seanmonstar/warp) and WebSockets.
 
-![what it looks like](input_display.mp4)
+https://user-images.githubusercontent.com/92748/210278032-49063cc1-6c6f-4bc5-b535-5d612d524e11.mp4
 
 # Node.js version
 
