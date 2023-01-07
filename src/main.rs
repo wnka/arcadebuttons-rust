@@ -21,6 +21,9 @@ struct Args {
     /// Port to use
     #[arg(short, long, default_value_t = 6528)]
     port: u16,
+
+    #[arg(short, long, default_value_t = false)]
+    mock: bool,
 }
 
 /// Our state of currently connected users.
@@ -64,10 +67,30 @@ async fn main() {
 
     let (gpio_tx, client_rx) = mpsc::unbounded_channel::<String>();
 
-    // Broadcast updates from GPIO to the thing that sends to clients
-    tokio::task::spawn(async move {
+    if args.mock {
+        tokio::task::spawn(async move {
+            // Input the Contra code
+            let cycle = vec![
+                "ud", "uu", "ud", "uu", "dd", "du", "dd", "du", // up up down down
+                "ld", "lu", "rd", "ru", "ld", "lu", "rd", "ru", // left right left right
+                "1d", "1u", "2d", "2u", // b a
+                "1d", "1u", "2d", "2u", // b a
+                "3d", "3u", "4d", "4u", // "select" "start"
+            ];
+            loop {
+                for state in cycle.clone().into_iter() {
+                    gpio_tx.send(String::from(state)).unwrap_or_else(|e| {
+                        eprintln!("websocket send error: {}", e);
+                    });
+                    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+                }
+            }
+        });
+    }
+    else {
         #[cfg(target_os = "linux")]
-        {
+        // Broadcast updates from GPIO to the thing that sends to clients
+        tokio::task::spawn(async move {
             // open chip. why gpiochip0? not sure! but it works!
             // at least it works on an RPi4b
             let chip = Chip::new("gpiochip0").await.unwrap();
@@ -105,26 +128,10 @@ async fn main() {
                     eprintln!("websocket send error: {}", e);
                 });
             }
-        }
-
+        });
         #[cfg(not(target_os = "linux"))]
-        {
-            // Spin the joystick, then press all the buttons
-            let cycle = vec!["ld", "ud", "lu", "rd", "uu", "dd", "ru", "ld", "du", "lu",
-                             "1d", "1u", "2d", "2u",
-                             "3d", "3u", "4d", "4u",
-            ];
-            loop {
-                for state in cycle.clone().into_iter() {
-                    gpio_tx.send(String::from(state)).unwrap_or_else(|e| {
-                        eprintln!("websocket send error: {}", e);
-                    });
-                    tokio::time::sleep(std::time::Duration::from_millis(rand::random::<u64>() % 250 + 50)).await;
-                }
-            }
-        }
-    });
-
+        panic!("Real input from GPIO only supported on Linux! Use --mock for test inputs.")
+    }
     // Broadcast updates to clients
     tokio::task::spawn(async move {
         let mut rx = UnboundedReceiverStream::new(client_rx);
