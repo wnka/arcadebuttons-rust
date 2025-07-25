@@ -10,7 +10,7 @@
   "updateContentCommand": "cargo build",
   "postCreateCommand": "",
   "postAttachCommand": {
-    "server": "cargo run"
+    "server": "cargo run -- --mock"
   },
   "portsAttributes": {
     "8888": {
